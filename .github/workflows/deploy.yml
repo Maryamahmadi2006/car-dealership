@@ -36,7 +36,33 @@ jobs:
       - name: SPA fallback (404.html)
         run: cp dist/index.html dist/404.html
 
+      # The Pages site must use the "GitHub Actions" build type. If it was
+      # enabled earlier from a branch, switch it — the workflow token carries
+      # pages: write, so this works without touching Settings by hand.
+      - name: Point Pages at GitHub Actions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          api() {
+            curl -sS -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" "$@"
+          }
+          code=$(api -o pages.json -w '%{http_code}' "https://api.github.com/repos/$REPO/pages")
+          echo "GET /pages -> $code"
+          cat pages.json; echo
+          if [ "$code" = "404" ]; then
+            api -X POST "https://api.github.com/repos/$REPO/pages" \
+              -d '{"build_type":"workflow"}'; echo
+          elif [ "$code" = "200" ]; then
+            api -X PUT "https://api.github.com/repos/$REPO/pages" \
+              -d '{"build_type":"workflow"}'; echo
+          fi
+
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
