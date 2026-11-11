@@ -26,9 +26,17 @@ export default function Button({ href, to, variant = 'dark', children, className
     );
   }
 
+  if (href) {
+    return (
+      <a className={cls} href={href} onClick={onClick} {...rest}>
+        {content}
+      </a>
+    );
+  }
+
   return (
-    <a className={cls} href={href ?? '#'} onClick={onClick} {...rest}>
+    <button type="button" className={cls} onClick={onClick} {...rest}>
       {content}
-    </a>
+    </button>
   );
 }

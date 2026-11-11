@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from './Icons';
+import FavoriteButton from './FavoriteButton';
 
 /**
  * Vehicle card: image with arrow notch at the bottom-right corner,
  * name + price row, year + badge row. Used on Home and Inventory.
  */
-export default function CarCard({ car }) {
-  return (
+export default function CarCard({ car, favorite, onToggleFavorite }) {
+  const card = (
     <Link className="car-card" to={`/inventory/${car.slug}`}>
       <div className="car-card__media">
         <img src={car.image} alt={car.alt} loading="lazy" />
@@ -27,5 +28,14 @@ export default function CarCard({ car }) {
         </div>
       </div>
     </Link>
+  );
+
+  if (!onToggleFavorite) return card;
+
+  return (
+    <div className="car-card-wrap">
+      {card}
+      <FavoriteButton active={favorite} onToggle={onToggleFavorite} label={car.name} />
+    </div>
   );
 }

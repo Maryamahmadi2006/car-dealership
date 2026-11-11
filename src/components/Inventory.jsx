@@ -18,17 +18,21 @@ function Gallery({ shots }) {
           </div>
         ))}
       </div>
-      <div className="carousel__counter">
-        {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
-      </div>
-      <div className="carousel__nav">
-        <button className="carousel__btn" onClick={prev} aria-label="Previous image">
-          <ArrowLeft />
-        </button>
-        <button className="carousel__btn" onClick={next} aria-label="Next image">
-          <ArrowRight />
-        </button>
-      </div>
+      {total > 1 && (
+        <>
+          <div className="carousel__counter">
+            {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
+          </div>
+          <div className="carousel__nav">
+            <button className="carousel__btn" onClick={prev} aria-label="Previous image">
+              <ArrowLeft />
+            </button>
+            <button className="carousel__btn" onClick={next} aria-label="Next image">
+              <ArrowRight />
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -51,8 +55,6 @@ function Accordion({ title, children, defaultOpen = false }) {
 }
 
 export default function Inventory({ vehicle }) {
-  const featureItems = vehicle.accordions[2]?.items || [];
-
   return (
     <section className="section" id="inventory">
       <div className="section__inner">
@@ -79,35 +81,26 @@ export default function Inventory({ vehicle }) {
             </Reveal>
 
             <Reveal className="accordions" delay={200}>
-              <Accordion title={vehicle.accordions[0].title} defaultOpen>
-                <div className="accordion__rows">
-                  {vehicle.accordions[0].items.map((row) => (
-                    <div className="spec-row" key={row.label}>
-                      <span className="spec-row__label">{row.label}</span>
-                      <span className="spec-row__value">{row.value}</span>
+              {vehicle.accordions.map((group) => (
+                <Accordion key={group.title} title={group.title} defaultOpen>
+                  {group.kind === 'features' ? (
+                    <ul className="features">
+                      {group.items.map((feature) => (
+                        <li key={feature.value}>{feature.value}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="accordion__rows">
+                      {group.items.map((row) => (
+                        <div className="spec-row" key={`${group.title}-${row.label}`}>
+                          <span className="spec-row__label">{row.label}</span>
+                          <span className="spec-row__value">{row.value}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </Accordion>
-
-              <Accordion title={vehicle.accordions[1].title} defaultOpen>
-                <div className="accordion__rows">
-                  {vehicle.accordions[1].items.map((row) => (
-                    <div className="spec-row" key={row.label}>
-                      <span className="spec-row__label">{row.label}</span>
-                      <span className="spec-row__value">{row.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </Accordion>
-
-              <Accordion title="Key Features" defaultOpen>
-                <ul className="features">
-                  {featureItems.map((feature) => (
-                    <li key={feature.value}>{feature.value}</li>
-                  ))}
-                </ul>
-              </Accordion>
+                  )}
+                </Accordion>
+              ))}
             </Reveal>
           </div>
         </div>

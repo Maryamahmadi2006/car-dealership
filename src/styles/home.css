@@ -531,6 +531,15 @@
     gap: 40px;
   }
 
+  .testi__side {
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .testi-rating {
+    flex: 1 1 100%;
+  }
+
   .testi-stat--a {
     height: 320px;
   }

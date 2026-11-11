@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from './Button';
 import Reveal, { Words } from './Reveal';
-import { quickIcons } from './Icons';
+import { quickIcons, IconHeart } from './Icons';
 
 function CopyButton({ label, value }) {
   const [copied, setCopied] = useState(false);
@@ -25,7 +25,9 @@ function CopyButton({ label, value }) {
   );
 }
 
-export default function Hero({ vehicle }) {
+export default function Hero({ vehicle, favorite, onToggleFavorite, onContact }) {
+  const sold = vehicle.status === 'sold';
+
   return (
     <section className="hero" id="top">
       <div className="hero__content">
@@ -35,6 +37,7 @@ export default function Hero({ vehicle }) {
               <Link to="/inventory">Inventory</Link>
               <span>-</span>
               <span>{vehicle.category}</span>
+              {sold && <span className="status-pill is-sold">Sold</span>}
             </div>
             <h1>
               <Words text={vehicle.name} />
@@ -45,8 +48,21 @@ export default function Hero({ vehicle }) {
             <Reveal className="hero__text" delay={150}>
               <p>{vehicle.description}</p>
               <div className="hero__actions">
-                <Button to="/contact" variant="dark">Contact Sales</Button>
-                <CopyButton label="VIN" value={vehicle.vin} />
+                <Button variant="dark" onClick={onContact} disabled={sold}>
+                  {sold ? 'Vehicle sold' : 'Contact Seller'}
+                </Button>
+                {onToggleFavorite && (
+                  <button
+                    type="button"
+                    className={`btn btn--pill wl-btn${favorite ? ' is-active' : ''}`}
+                    onClick={onToggleFavorite}
+                    aria-pressed={favorite}
+                  >
+                    <IconHeart size={18} filled={favorite} />
+                    {favorite ? 'Saved' : 'Wishlist'}
+                  </button>
+                )}
+                {vehicle.vin && <CopyButton label="VIN" value={vehicle.vin} />}
                 <CopyButton label="Stock" value={vehicle.stock} />
               </div>
             </Reveal>

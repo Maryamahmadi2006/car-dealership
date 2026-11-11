@@ -518,6 +518,7 @@ export function getVehicle(slug) {
     accordions: [
       {
         title: 'Specifications',
+        kind: 'rows',
         items: [
           { label: 'Mileage', value: String(car.mileage) },
           { label: 'Transmission', value: s.transmission },
@@ -532,6 +533,7 @@ export function getVehicle(slug) {
       },
       {
         title: 'Condition & History',
+        kind: 'rows',
         items: [
           { label: 'Condition', value: h.condition },
           { label: 'Previous Owner', value: h.previousOwner },
@@ -543,6 +545,7 @@ export function getVehicle(slug) {
       },
       {
         title: 'Key Features',
+        kind: 'features',
         items: car.features.map((f) => ({ label: '', value: f })),
       },
     ],

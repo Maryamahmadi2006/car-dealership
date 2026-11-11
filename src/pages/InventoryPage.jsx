@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import PageHero from '../components/PageHero';
 import CarCard from '../components/CarCard';
 import CtaSection from '../components/CtaSection';
@@ -6,21 +7,11 @@ import Reveal from '../components/Reveal';
 import { Content, Section } from '../components/Section';
 import { SearchIcon } from '../components/Icons';
 import { inventoryHero } from '../data/site';
-import { vehicles } from '../data/vehicles';
+import { useStore } from '../context/StoreContext';
+import { listingTitle, toCard } from '../lib/listings';
 
-const TYPES = ['All', 'SUV', 'Coupe', 'Convertible', 'Estate'];
-const MAKES = [
-  'All',
-  'Veltora',
-  'Krynox',
-  'Dreznak',
-  'Soliven',
-  'Pharyx',
-  'Emblora',
-  'Zethrux',
-  'Aurvane',
-];
-const CONDITIONS = ['All', 'New', 'As New', 'Excellent', 'Used'];
+const CONDITIONS = ['New', 'As New', 'Excellent', 'Used'];
+const TYPE_ORDER = ['SUV', 'Coupe', 'Convertible', 'Estate', 'Sedan', 'Hatchback', 'Truck'];
 const PRICE_RANGES = [
   { id: '50k-100k', label: '50k-100k', min: 50000, max: 100000 },
   { id: '100k-200k', label: '100k-200k', min: 100000, max: 200000 },
@@ -30,39 +21,91 @@ const PRICE_RANGES = [
 const toNumber = (price) => Number(String(price).replace(/,/g, ''));
 
 export default function InventoryPage() {
+  const { listings, user, isFavorite, toggleFavorite } = useStore();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [search, setSearch] = useState('');
   const [make, setMake] = useState('All');
+  const [model, setModel] = useState('');
   const [condition, setCondition] = useState('All');
   const [year, setYear] = useState('');
   const [mileage, setMileage] = useState('');
   const [ranges, setRanges] = useState([]);
   const [type, setType] = useState('All');
 
+  const available = useMemo(
+    () => listings.filter((listing) => listing.status === 'available'),
+    [listings]
+  );
+
+  const makes = useMemo(
+    () => ['All', ...Array.from(new Set(available.map((listing) => listing.make))).sort()],
+    [available]
+  );
+
+  const types = useMemo(() => {
+    const present = Array.from(new Set(available.map((listing) => listing.type)));
+    const ordered = TYPE_ORDER.filter((item) => present.includes(item));
+    return ['All', ...ordered, ...present.filter((item) => !TYPE_ORDER.includes(item))];
+  }, [available]);
+
+  const conditions = useMemo(() => {
+    const present = Array.from(new Set(available.map((listing) => listing.condition)));
+    return ['All', ...CONDITIONS.filter((item) => present.includes(item)), ...present.filter((item) => !CONDITIONS.includes(item))];
+  }, [available]);
+
   const toggleRange = (id) =>
     setRanges((prev) =>
-      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((range) => range !== id) : [...prev, id]
     );
 
-  const results = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const activeRanges = PRICE_RANGES.filter((r) => ranges.includes(r.id));
+  const reset = () => {
+    setSearch('');
+    setMake('All');
+    setModel('');
+    setCondition('All');
+    setYear('');
+    setMileage('');
+    setRanges([]);
+    setType('All');
+  };
 
-    return vehicles.filter((car) => {
-      const price = toNumber(car.price);
-      if (q && !car.name.toLowerCase().includes(q) && !car.make.toLowerCase().includes(q)) return false;
-      if (make !== 'All' && car.make !== make) return false;
-      if (condition !== 'All' && car.condition !== condition) return false;
-      if (year && car.year !== year.trim()) return false;
-      if (mileage && car.mileage > Number(mileage)) return false;
-      if (type !== 'All' && car.type !== type) return false;
+  const results = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const activeRanges = PRICE_RANGES.filter((range) => ranges.includes(range.id));
+
+    return available.filter((listing) => {
+      const price = toNumber(listing.price);
+      const title = listingTitle(listing).toLowerCase();
       if (
-        activeRanges.length &&
-        !activeRanges.some((r) => price >= r.min && price <= r.max)
+        query &&
+        !title.includes(query) &&
+        !listing.make.toLowerCase().includes(query) &&
+        !String(listing.model).toLowerCase().includes(query)
       )
+        return false;
+      if (make !== 'All' && listing.make !== make) return false;
+      if (model.trim() && !String(listing.model).toLowerCase().includes(model.trim().toLowerCase()))
+        return false;
+      if (condition !== 'All' && listing.condition !== condition) return false;
+      if (year && String(listing.year) !== year.trim()) return false;
+      if (mileage && listing.mileage > Number(mileage)) return false;
+      if (type !== 'All' && listing.type !== type) return false;
+      if (activeRanges.length && !activeRanges.some((range) => price >= range.min && price <= range.max))
         return false;
       return true;
     });
-  }, [search, make, condition, year, mileage, ranges, type]);
+  }, [available, search, make, model, condition, year, mileage, ranges, type]);
+
+  const canFavorite = user?.role !== 'seller';
+
+  const handleFavorite = (listing) => {
+    if (!user) {
+      navigate('/login', { state: { from: location.pathname } });
+      return;
+    }
+    toggleFavorite(listing.id);
+  };
 
   return (
     <>
@@ -83,7 +126,7 @@ export default function InventoryPage() {
                   placeholder="Search..."
                   aria-label="Search inventory"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(event) => setSearch(event.target.value)}
                 />
               </div>
             </Reveal>
@@ -91,13 +134,25 @@ export default function InventoryPage() {
             <Reveal className="filters__group" delay={100}>
               <label className="filters__label" htmlFor="f-make">Make</label>
               <div className="filters__select">
-                <select id="f-make" value={make} onChange={(e) => setMake(e.target.value)}>
-                  {MAKES.map((m) => (
-                    <option key={m} value={m}>{m}</option>
+                <select id="f-make" value={make} onChange={(event) => setMake(event.target.value)}>
+                  {makes.map((item) => (
+                    <option key={item} value={item}>{item}</option>
                   ))}
                 </select>
                 <span className="field__chevron" aria-hidden="true" />
               </div>
+            </Reveal>
+
+            <Reveal className="filters__group" delay={120}>
+              <label className="filters__label" htmlFor="f-model">Model</label>
+              <input
+                id="f-model"
+                className="filters__input"
+                type="text"
+                placeholder="Any model"
+                value={model}
+                onChange={(event) => setModel(event.target.value)}
+              />
             </Reveal>
 
             <Reveal className="filters__group" delay={140}>
@@ -106,10 +161,10 @@ export default function InventoryPage() {
                 <select
                   id="f-condition"
                   value={condition}
-                  onChange={(e) => setCondition(e.target.value)}
+                  onChange={(event) => setCondition(event.target.value)}
                 >
-                  {CONDITIONS.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                  {conditions.map((item) => (
+                    <option key={item} value={item}>{item}</option>
                   ))}
                 </select>
                 <span className="field__chevron" aria-hidden="true" />
@@ -126,7 +181,7 @@ export default function InventoryPage() {
                   inputMode="numeric"
                   placeholder="2024"
                   value={year}
-                  onChange={(e) => setYear(e.target.value)}
+                  onChange={(event) => setYear(event.target.value)}
                 />
               </div>
               <div>
@@ -138,7 +193,7 @@ export default function InventoryPage() {
                   min="0"
                   placeholder="10000"
                   value={mileage}
-                  onChange={(e) => setMileage(e.target.value)}
+                  onChange={(event) => setMileage(event.target.value)}
                 />
               </div>
             </Reveal>
@@ -146,15 +201,15 @@ export default function InventoryPage() {
             <Reveal className="filters__group" delay={220}>
               <span className="filters__label">Price Range</span>
               <div className="filters__checks">
-                {PRICE_RANGES.map((r) => (
-                  <label className="check" key={r.id}>
+                {PRICE_RANGES.map((range) => (
+                  <label className="check" key={range.id}>
                     <input
                       type="checkbox"
-                      checked={ranges.includes(r.id)}
-                      onChange={() => toggleRange(r.id)}
+                      checked={ranges.includes(range.id)}
+                      onChange={() => toggleRange(range.id)}
                     />
                     <span className="check__box" aria-hidden="true" />
-                    <span className="check__label">{r.label}</span>
+                    <span className="check__label">{range.label}</span>
                   </label>
                 ))}
               </div>
@@ -163,41 +218,45 @@ export default function InventoryPage() {
 
           <div className="filters__main">
             <div className="type-pills" role="tablist" aria-label="Body type">
-              {TYPES.map((t) => (
+              {types.map((item) => (
                 <button
-                  key={t}
-                  className={`type-pill${type === t ? ' is-active' : ''}`}
-                  onClick={() => setType(t)}
+                  key={item}
+                  className={`type-pill${type === item ? ' is-active' : ''}`}
+                  onClick={() => setType(item)}
                   type="button"
                 >
-                  {t}
+                  {item}
                 </button>
               ))}
             </div>
 
             {results.length > 0 ? (
-              <div className="inventory-grid">
-                {results.map((car, i) => (
-                  <Reveal key={car.slug} delay={(i % 4) * 70}>
-                    <CarCard car={car} />
-                  </Reveal>
-                ))}
-              </div>
+              <>
+                <p className="inventory-count">
+                  {results.length} {results.length === 1 ? 'vehicle' : 'vehicles'} available
+                </p>
+                <div className="inventory-grid">
+                  {results.map((listing, index) => {
+                    const card = toCard(listing);
+                    return (
+                      <Reveal key={listing.id} delay={(index % 4) * 70}>
+                        <CarCard
+                          car={card}
+                          favorite={isFavorite(listing.id)}
+                          onToggleFavorite={
+                            canFavorite ? () => handleFavorite(listing) : undefined
+                          }
+                        />
+                      </Reveal>
+                    );
+                  })}
+                </div>
+              </>
             ) : (
               <div className="inventory-empty">
-                <p>No vehicles match your filters.</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearch('');
-                    setMake('All');
-                    setCondition('All');
-                    setYear('');
-                    setMileage('');
-                    setRanges([]);
-                    setType('All');
-                  }}
-                >
+                <h3>No vehicles found</h3>
+                <p>No vehicles match your filters. Try widening your search.</p>
+                <button type="button" onClick={reset}>
                   Reset filters
                 </button>
               </div>
