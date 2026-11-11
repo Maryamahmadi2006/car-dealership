@@ -55,14 +55,7 @@ export default function Footer() {
             © 2024 CAR DEALERSHIP - ALL RIGHTS RESERVED
           </div>
           <div className="footer__legal">
-            <span className="footer__credit">
-              Made By{' '}
-              <a href="https://marketplace.framer.com/@akem-design/" target="_blank" rel="noreferrer">
-                Akem
-              </a>{' '}
-              in{' '}
-              <a href="https://framer.link/akem-design" target="_blank" rel="noreferrer">Framer</a>
-            </span>
+            <span className="footer__credit">Made By Bestie Group</span>
             {legalLinks.map((link, i) => (
               <span key={link.label}>
                 {i > 0 && ' | '}
